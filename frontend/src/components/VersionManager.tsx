@@ -1,18 +1,15 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+
 import { 
   History, 
   RotateCcw, 
-  Eye, 
-  ChevronLeft, 
-  ChevronRight,
-  Download,
+  Eye,
   GitBranch,
   Clock,
   User
@@ -31,13 +28,7 @@ export default function VersionManager({ projectId, onRollback }: VersionManager
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [showRollbackModal, setShowRollbackModal] = useState(false)
 
-  useEffect(() => {
-    if (projectId) {
-      fetchVersions()
-    }
-  }, [projectId])
-
-  const fetchVersions = async () => {
+  const fetchVersions = useCallback(async () => {
     try {
       setLoading(true)
       const data = await versionAPI.getVersions(projectId)
@@ -47,11 +38,18 @@ export default function VersionManager({ projectId, onRollback }: VersionManager
     } finally {
       setLoading(false)
     }
-  }
+  }, [projectId])
+
+  useEffect(() => {
+    if (projectId) {
+      fetchVersions()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId])
 
   const handleRollback = async (version: Version) => {
     try {
-      await versionAPI.rollback(version.id)
+      await versionAPI.rollbackVersion(projectId, version.id)
       setShowRollbackModal(false)
       setSelectedVersion(null)
       

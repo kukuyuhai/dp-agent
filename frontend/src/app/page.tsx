@@ -6,7 +6,7 @@ import { Separator } from '@/components/ui/separator'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Card } from '@/components/ui/card'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Bot, Folder, Plus, MessageCircle, History, Database } from 'lucide-react'
 import ProjectList from '@/components/ProjectList'
@@ -18,7 +18,7 @@ import { type Project, type Session } from '@/lib/api'
 export default function Home() {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
   const [currentSession, setCurrentSession] = useState<Session | null>(null)
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [sidebarOpen] = useState(true)
 
   const handleProjectSelect = (project: Project) => {
     setSelectedProject(project)

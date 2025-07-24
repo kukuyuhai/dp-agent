@@ -1,9 +1,8 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Send, Bot, User } from 'lucide-react'
 import { sessionAPI, type Project, type Session, type Message } from '@/lib/api'
 
@@ -13,23 +12,19 @@ interface ChatInterfaceProps {
   onNewSession: (session: Session) => void
 }
 
-export default function ChatInterface({ project, session, onNewSession }: ChatInterfaceProps) {
+export default function ChatInterface({ 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  project,
+  session, 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  onNewSession 
+}: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([])
   const [inputMessage, setInputMessage] = useState('')
   const [loading, setLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    if (session) {
-      loadMessages()
-    }
-  }, [session])
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
-
-  const loadMessages = async () => {
+  const loadMessages = useCallback(async () => {
     if (!session) return
     
     try {
@@ -38,7 +33,17 @@ export default function ChatInterface({ project, session, onNewSession }: ChatIn
     } catch (err) {
       console.error('Error loading messages:', err)
     }
-  }
+  }, [session])
+
+  useEffect(() => {
+    if (session) {
+      loadMessages()
+    }
+  }, [session, loadMessages])
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || !session) return

@@ -1,12 +1,12 @@
 import os
 from typing import List
-from pydantic import BaseSettings
+from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     # 数据库配置
     DATABASE_URL: str = os.getenv(
         "DATABASE_URL", 
-        "postgresql://postgres:postgres@localhost:5432/dp_agent"
+        "postgresql://postgres:postgres@db:5432/dp_agent"
     )
     
     # MinIO配置

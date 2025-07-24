@@ -1,64 +1,56 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { BarChart3, Database, Hash, Calendar, FileText } from 'lucide-react'
-import { dataAPI, type DataProfile, type ColumnStats } from '@/lib/api'
+import { dataAPI, type DataProfile } from '@/lib/api'
 
 interface DataProfilerProps {
+  projectId: string
   filePath?: string
 }
 
 const DataProfiler: React.FC<DataProfilerProps> = ({ filePath }) => {
   const [profile, setProfile] = useState<DataProfile | null>(null)
   const [loading, setLoading] = useState(false)
-  const [previewData, setPreviewData] = useState<any[]>([])
 
-  useEffect(() => {
-    if (filePath) {
-      fetchProfile()
-      fetchPreview()
-    }
-  }, [filePath])
 
-  const fetchProfile = async () => {
+  const fetchProfile = useCallback(async () => {
     if (!filePath) return
     
     try {
       setLoading(true)
       const data = await dataAPI.profileData(filePath)
       setProfile(data)
-    } catch (error) {
-      console.error('数据探查失败:', error)
+    } catch (err) {
+      console.error('Error fetching data profile:', err)
     } finally {
       setLoading(false)
     }
-  }
+  }, [filePath])
 
-  const fetchPreview = async () => {
-    if (!filePath) return
-    
-    try {
-      const data = await dataAPI.previewData(filePath, 10)
-      setPreviewData(data || [])
-    } catch (error) {
-      console.error('获取预览数据失败:', error)
+  useEffect(() => {
+    if (filePath) {
+      fetchProfile()
     }
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filePath])
 
-  const getTypeColor = (type: string): string => {
-    const colors: Record<string, string> = {
-      'int64': 'blue',
-      'float64': 'green',
-      'object': 'orange',
-      'datetime64': 'purple',
-      'bool': 'red',
+
+
+  const getTypeColor = (type: string): 'default' | 'destructive' | 'outline' | 'secondary' => {
+    const colors: Record<string, 'default' | 'destructive' | 'outline' | 'secondary'> = {
+      'int64': 'default',
+      'float64': 'secondary',
+      'object': 'outline',
+      'datetime64': 'secondary',
+      'bool': 'destructive',
     }
-    return colors[type] || 'default'
+    return colors[type] || 'outline'
   }
 
   const getTypeIcon = (type: string) => {

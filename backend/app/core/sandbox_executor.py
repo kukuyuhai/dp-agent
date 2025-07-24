@@ -9,7 +9,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-class SecureCodeExecutor:
+class SandboxExecutor:
     """安全代码执行器，使用Docker容器沙箱"""
     
     def __init__(self):
@@ -18,15 +18,15 @@ class SecureCodeExecutor:
         self.memory_limit = '2g'    # 内存限制
         self.cpu_limit = '1'        # CPU限制
         
-    def execute_python_script(self, script: str, input_data_path: str, 
-                           output_data_path: str) -> Dict[str, Any]:
+    async def execute_code(self, code: str, input_file: str, 
+                           output_file: str) -> Dict[str, Any]:
         """
-        在安全的Docker容器中执行Python脚本
+        在安全的Docker容器中执行Python代码
         
         Args:
-            script: 要执行的Python代码
-            input_data_path: 输入数据文件路径
-            output_data_path: 输出数据文件路径
+            code: 要执行的Python代码
+            input_file: 输入数据文件路径
+            output_file: 输出数据文件路径
             
         Returns:
             执行结果字典
@@ -50,25 +50,26 @@ sys.setrecursionlimit(1000)
 
 # 读取输入数据
 try:
-    if '{input_data_path}'.endswith('.csv'):
-        df = pl.read_csv('{input_data_path}')
-    elif '{input_data_path}'.endswith('.xlsx'):
-        df = pl.read_excel('{input_data_path}')
+    if '{input_file}'.endswith('.csv'):
+        df = pl.read_csv('{input_file}')
+    elif '{input_file}'.endswith('.xlsx'):
+        df = pl.read_excel('{input_file}')
     else:
         raise ValueError("不支持的文件格式")
     
     # 执行用户代码
-{script}
+{code}
     
     # 保存结果
-    result_df.write_csv('{output_data_path}')
+    result_df.write_csv('{output_file}')
     
     # 返回统计信息
     stats = {{
         'rows': len(result_df),
         'columns': len(result_df.columns),
         'columns_list': result_df.columns,
-        'dtypes': {{col: str(dtype) for col, dtype in result_df.schema.items()}}
+        'dtypes': {{col: str(dtype) for col, dtype in result_df.schema.items()}},
+        'rows_affected': len(result_df)
     }}
     
     print(json.dumps(stats))

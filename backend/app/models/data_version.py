@@ -28,7 +28,7 @@ class DataVersion(Base):
     message = Column(Text, nullable=False)  # 操作描述
     code = Column(Text)  # 生成的Python代码
     data_snapshot_path = Column(String(500))  # 数据快照在MinIO中的路径
-    metadata = Column(JSON)  # 数据元信息（行列数、列类型等）
+    meta_info = Column(JSON)  # 数据元信息（行列数、列类型等）
     created_at = Column(DateTime, default=datetime.utcnow)
     author = Column(String(100))
     
@@ -58,7 +58,7 @@ class Message(Base):
     session_id = Column(String(36), ForeignKey("sessions.id"), nullable=False)
     role = Column(String(20), nullable=False)  # user, assistant, system
     content = Column(Text, nullable=False)
-    metadata = Column(JSON)  # 包含参数提取结果等
+    meta_data = Column(JSON)  # 包含参数提取结果等
     version_id = Column(String(40), ForeignKey("data_versions.id"))
     created_at = Column(DateTime, default=datetime.utcnow)
     

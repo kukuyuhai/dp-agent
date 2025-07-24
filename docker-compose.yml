@@ -18,6 +18,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - dp-network
 
   minio:
     image: minio/minio:latest
@@ -36,6 +38,8 @@ services:
       interval: 30s
       timeout: 20s
       retries: 3
+    networks:
+      - dp-network
 
   backend:
     build: ./backend
@@ -71,7 +75,7 @@ services:
     depends_on:
       - backend
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
     networks:
       - dp-network
 

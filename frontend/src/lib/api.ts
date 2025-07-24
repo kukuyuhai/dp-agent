@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -20,9 +20,10 @@ export interface Project {
 export interface Session {
   id: string
   project_id: string
+  title?: string
   created_at: string
   updated_at: string
-  messages: Message[]
+  messages?: Message[]
 }
 
 export interface Message {
@@ -48,7 +49,7 @@ export interface Version {
     dtypes?: Record<string, string>
     null_counts?: Record<string, number>
     file_size?: number
-    [key: string]: any
+    [key: string]: string | number | string[] | Record<string, string> | Record<string, number> | undefined
   }
   author?: string
   type?: string
@@ -115,7 +116,7 @@ export const versionAPI = {
     return response.data
   },
 
-  createVersion: async (projectId: string, message: string, code?: string, dataSnapshot?: any): Promise<Version> => {
+  createVersion: async (projectId: string, message: string, code?: string, dataSnapshot?: Record<string, unknown>): Promise<Version> => {
     const response = await api.post(`/projects/${projectId}/versions`, {
       message,
       code,
@@ -133,7 +134,7 @@ export const versionAPI = {
     return response.data
   },
 
-  compareVersions: async (projectId: string, version1Id: string, version2Id: string): Promise<any> => {
+  compareVersions: async (projectId: string, version1Id: string, version2Id: string): Promise<Record<string, unknown>> => {
     const response = await api.get(`/projects/${projectId}/versions/compare/${version1Id}/${version2Id}`)
     return response.data
   },
@@ -181,7 +182,7 @@ export const dataAPI = {
     return response.data
   },
 
-  previewData: async (filePath: string, limit: number = 100): Promise<any[]> => {
+  previewData: async (filePath: string, limit: number = 100): Promise<Record<string, unknown>[]> => {
     const response = await api.post('/data/preview', { file_path: filePath, limit })
     return response.data
   },
