@@ -185,10 +185,30 @@ async def profile_data(
 async def create_session(
     project_id: str = Form(...),
     title: str = Form("新对话"),
+    initial_message: str = Form(None),
     session_manager: SessionManager = Depends(get_session_manager)
 ):
     """创建新会话"""
-    session_id = session_manager.create_session(project_id, title)
+    session_id = session_manager.create_session(project_id, title, initial_message)
+    
+    # 如果有初始消息，立即处理
+    if initial_message:
+        try:
+            result = await session_manager.process_user_input(
+                session_id=session_id,
+                user_input=initial_message
+            )
+            return {
+                "id": session_id,
+                "project_id": project_id,
+                "title": title,
+                "created_at": datetime.utcnow().isoformat(),
+                "updated_at": datetime.utcnow().isoformat(),
+                "initial_response": result
+            }
+        except Exception as e:
+            logger.error(f"处理初始消息失败: {e}")
+    
     return {
         "id": session_id,
         "project_id": project_id,

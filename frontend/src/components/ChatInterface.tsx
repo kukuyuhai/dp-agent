@@ -52,21 +52,32 @@ export default function ChatInterface({
     setInputMessage('')
     setLoading(true)
 
+    // 添加用户消息到本地状态
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      session_id: session.id,
+      role: 'user',
+      content: message,
+      created_at: new Date().toISOString()
+    }
+    setMessages(prev => [...prev, userMessage])
+
     try {
-      const newMessage = await sessionAPI.sendMessage(session.id, message)
-      setMessages(prev => [...prev, newMessage])
-      
-      // Simulate AI response
-      setTimeout(async () => {
-        const aiMessage = await sessionAPI.sendMessage(
-          session.id, 
-          `已收到您的消息：${message}。我正在处理您的数据处理需求...`
-        )
-        setMessages(prev => [...prev, aiMessage])
-        setLoading(false)
-      }, 1000)
+      // 调用后端API获取AI响应
+      const aiMessage = await sessionAPI.sendMessage(session.id, message)
+      setMessages(prev => [...prev, aiMessage])
     } catch (err) {
       console.error('Error sending message:', err)
+      // 添加错误消息
+      const errorMessage: Message = {
+        id: Date.now().toString(),
+        session_id: session.id,
+        role: 'assistant',
+        content: '抱歉，处理您的请求时出现错误。请稍后重试。',
+        created_at: new Date().toISOString()
+      }
+      setMessages(prev => [...prev, errorMessage])
+    } finally {
       setLoading(false)
     }
   }

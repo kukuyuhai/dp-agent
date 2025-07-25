@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Bot, MessageCircle, ArrowLeft, Plus } from 'lucide-react'
+import { Bot, MessageCircle, ArrowLeft, Plus, ArrowRight } from 'lucide-react'
 import { projectAPI, sessionAPI, type Project, type Session } from '@/lib/api'
 
 export default function ProjectPage() {
@@ -191,14 +191,66 @@ export default function ProjectPage() {
 
         {/* Content */}
         <div className="flex-1 p-6">
-          <div className="text-center py-12">
-            <Bot className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-            <h3 className="text-lg font-semibold mb-2">开始数据处理</h3>
-            <p className="text-gray-500 mb-4">点击左侧"新建对话"按钮开始新的数据处理会话</p>
-            <Button onClick={handleCreateSession}>
-              <Plus className="h-4 w-4 mr-2" />
-              新建对话
-            </Button>
+          <div className="max-w-4xl mx-auto">
+            <Card>
+              <CardHeader>
+                <CardTitle>开始数据处理对话</CardTitle>
+                <p className="text-sm text-gray-500">
+                  与AI助手进行自然语言对话，完成数据清洗、转换和分析任务
+                </p>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-4 border rounded-lg">
+                      <h4 className="font-medium mb-2">快速开始</h4>
+                      <p className="text-sm text-gray-600 mb-3">创建新会话并上传数据文件</p>
+                      <Button onClick={handleCreateSession} className="w-full">
+                        <Plus className="h-4 w-4 mr-2" />
+                        创建新会话
+                      </Button>
+                    </div>
+                    <div className="p-4 border rounded-lg">
+                      <h4 className="font-medium mb-2">继续对话</h4>
+                      <p className="text-sm text-gray-600 mb-3">从历史会话中选择继续</p>
+                      <Button 
+                        variant="outline" 
+                        className="w-full"
+                        disabled={sessions.length === 0}
+                        onClick={() => sessions.length > 0 && handleSessionSelect(sessions[0])}
+                      >
+                        查看最新对话
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  {sessions.length > 0 && (
+                    <div>
+                      <h4 className="font-medium mb-3">最近对话</h4>
+                      <div className="space-y-2">
+                        {sessions.slice(0, 3).map(session => (
+                          <div 
+                            key={session.id} 
+                            className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                            onClick={() => handleSessionSelect(session)}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="font-medium">{session.title}</p>
+                                <p className="text-sm text-gray-500">
+                                  {new Date(session.updated_at).toLocaleString()}
+                                </p>
+                              </div>
+                              <ArrowRight className="h-4 w-4 text-gray-400" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>

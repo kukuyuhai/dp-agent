@@ -84,9 +84,20 @@ export const projectAPI = {
 }
 
 export const sessionAPI = {
-  createSession: async (projectId: string, title?: string): Promise<Session> => {
-    const response = await api.post('/sessions', { project_id: projectId, title: title || '新对话' })
-    return response.data
+  createSession: async (projectId: string, title?: string, initialMessage?: string): Promise<Session> => {
+    const formData = new URLSearchParams();
+    formData.append('project_id', projectId);
+    formData.append('title', title || '新对话');
+    if (initialMessage) {
+      formData.append('initial_message', initialMessage);
+    }
+    
+    const response = await api.post('/sessions', formData, {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    });
+    return response.data;
   },
 
   getSession: async (id: string): Promise<Session> => {
@@ -100,13 +111,26 @@ export const sessionAPI = {
   },
 
   sendMessage: async (sessionId: string, content: string): Promise<Message> => {
-    const response = await api.post(`/sessions/${sessionId}/messages`, { content })
-    return response.data
+    const response = await api.post('/chat', { session_id: sessionId, message: content })
+    // 将ChatResponse转换为Message格式
+    return {
+      id: Date.now().toString(),
+      session_id: sessionId,
+      role: 'assistant',
+      content: response.data.message,
+      created_at: new Date().toISOString()
+    }
   },
 
   getMessages: async (sessionId: string): Promise<Message[]> => {
-    const response = await api.get(`/sessions/${sessionId}/messages`)
-    return response.data
+    const response = await api.get(`/sessions/${sessionId}/history`)
+    return response.data.map((msg: any) => ({
+      id: msg.id,
+      session_id: sessionId,
+      role: msg.role as 'user' | 'assistant',
+      content: msg.content,
+      created_at: msg.created_at
+    }))
   },
 }
 

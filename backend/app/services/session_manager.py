@@ -17,11 +17,14 @@ class SessionManager:
     
     def __init__(self, db: Session):
         self.db = db
-        self.agent = AgentOrchestrator()
-        self.version_manager = VersionManager()
+        from ..core.config import settings
+        from ..core.minio_client import MinIOClient
+        self.agent = AgentOrchestrator(api_key=settings.OPENAI_API_KEY)
+        self.minio_client = MinIOClient()
+        self.version_manager = VersionManager(db, self.minio_client)
         self.sandbox = SandboxExecutor()
     
-    def create_session(self, project_id: str, title: str = "新对话", user_input: str = None) -> str:
+    def create_session(self, project_id: str, title: str = "新对话", initial_message: str = None) -> str:
         """创建新会话"""
         session_id = str(uuid.uuid4())
         
@@ -37,9 +40,13 @@ class SessionManager:
         self.db.add(session)
         self.db.commit()
         
-        # 如果有初始输入，添加到会话
-        if user_input:
-            self.add_message(session_id, "user", user_input)
+        # 如果有初始消息，添加到会话
+        if initial_message:
+            self.add_message(session_id, "user", initial_message)
+            
+            # 添加欢迎消息
+            welcome_message = "您好！我是您的数据处理助手。我将帮助您完成数据清洗、转换和分析任务。"
+            self.add_message(session_id, "assistant", welcome_message)
         
         logger.info(f"创建会话: {session_id}")
         return session_id
