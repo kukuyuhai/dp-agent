@@ -21,13 +21,14 @@ class SessionManager:
         self.version_manager = VersionManager()
         self.sandbox = SandboxExecutor()
     
-    def create_session(self, project_id: str, user_input: str = None) -> str:
+    def create_session(self, project_id: str, title: str = "新对话", user_input: str = None) -> str:
         """创建新会话"""
         session_id = str(uuid.uuid4())
         
         session = SessionModel(
             id=session_id,
             project_id=project_id,
+            title=title,
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow(),
             current_version_id=None
@@ -214,10 +215,11 @@ class SessionManager:
         return [
             {
                 'id': session.id,
+                'project_id': session.project_id,
+                'title': session.title,
                 'created_at': session.created_at.isoformat(),
                 'updated_at': session.updated_at.isoformat(),
-                'current_version_id': session.current_version_id,
-                'message_count': len(session.messages)
+                'current_version_id': session.current_version_id
             }
             for session in sessions
         ]

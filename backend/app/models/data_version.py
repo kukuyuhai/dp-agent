@@ -42,6 +42,7 @@ class Session(Base):
     
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     project_id = Column(String(36), ForeignKey("projects.id"), nullable=False)
+    title = Column(String(255), default="新对话")
     current_version_id = Column(String(40), ForeignKey("data_versions.id"))
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

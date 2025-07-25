@@ -84,8 +84,8 @@ export const projectAPI = {
 }
 
 export const sessionAPI = {
-  createSession: async (projectId: string): Promise<Session> => {
-    const response = await api.post('/sessions', { project_id: projectId })
+  createSession: async (projectId: string, title?: string): Promise<Session> => {
+    const response = await api.post('/sessions', { project_id: projectId, title: title || '新对话' })
     return response.data
   },
 

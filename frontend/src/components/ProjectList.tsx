@@ -8,7 +8,7 @@ import { Plus, Folder, Database } from 'lucide-react'
 import { projectAPI, type Project } from '@/lib/api'
 
 interface ProjectListProps {
-  onProjectSelect: (project: Project) => void
+  onProjectSelect?: (project: Project) => void
 }
 
 export default function ProjectList({ onProjectSelect }: ProjectListProps) {
@@ -112,7 +112,13 @@ export default function ProjectList({ onProjectSelect }: ProjectListProps) {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {projects.map(project => (
-            <Card key={project.id} className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => onProjectSelect(project)}>
+            <Card key={project.id} className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => {
+              if (onProjectSelect) {
+                onProjectSelect(project)
+              } else {
+                window.location.href = `/project/${project.id}`
+              }
+            }}>
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg">{project.name}</CardTitle>

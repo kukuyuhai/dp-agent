@@ -183,20 +183,57 @@ async def profile_data(
 # 会话管理端点
 @router.post("/sessions", response_model=dict)
 async def create_session(
-    project_id: str,
+    project_id: str = Form(...),
+    title: str = Form("新对话"),
     session_manager: SessionManager = Depends(get_session_manager)
 ):
     """创建新会话"""
-    session_id = session_manager.create_session(project_id)
-    return {"session_id": session_id}
+    session_id = session_manager.create_session(project_id, title)
+    return {
+        "id": session_id,
+        "project_id": project_id,
+        "title": title,
+        "created_at": datetime.utcnow().isoformat(),
+        "updated_at": datetime.utcnow().isoformat()
+    }
 
-@router.get("/sessions/{project_id}", response_model=List[dict])
+@router.get("/sessions", response_model=List[dict])
 async def get_sessions(
     project_id: str,
-    session_manager: SessionManager = Depends(get_session_manager)
+    db: Session = Depends(get_db)
 ):
     """获取项目的会话列表"""
-    return session_manager.get_active_sessions(project_id)
+    from ..models.data_version import Session as SessionModel
+    sessions = db.query(SessionModel).filter(SessionModel.project_id == project_id).order_by(SessionModel.created_at.desc()).all()
+    return [
+        {
+            "id": s.id,
+            "project_id": s.project_id,
+            "title": s.title or "新对话",
+            "created_at": s.created_at.isoformat(),
+            "updated_at": s.updated_at.isoformat()
+        }
+        for s in sessions
+    ]
+
+@router.get("/sessions/{session_id}", response_model=dict)
+async def get_session(
+    session_id: str,
+    db: Session = Depends(get_db)
+):
+    """获取单个会话详情"""
+    from ..models.data_version import Session as SessionModel
+    session = db.query(SessionModel).filter(SessionModel.id == session_id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="会话不存在")
+    
+    return {
+        "id": session.id,
+        "project_id": session.project_id,
+        "title": session.title or "新对话",
+        "created_at": session.created_at.isoformat(),
+        "updated_at": session.updated_at.isoformat()
+    }
 
 @router.get("/sessions/{session_id}/history", response_model=List[dict])
 async def get_session_history(
