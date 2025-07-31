@@ -1,5 +1,4 @@
-'use client'
-
+import type { Metadata } from 'next'
 import { AppSidebar } from "@/components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
 import {
@@ -7,6 +6,16 @@ import {
   SidebarProvider,
 } from "@/components/ui/sidebar"
 import ProjectList from '@/components/project-list'
+
+export const metadata: Metadata = {
+  title: "控制台 - DP Agent",
+  description: "DP Agent 控制台页面，管理和监控您的数据处理项目和工作流",
+  keywords: ["控制台", "项目管理", "数据处理控制台", "工作流管理"],
+  openGraph: {
+    title: "控制台 - DP Agent",
+    description: "管理和监控您的数据处理项目和工作流",
+  },
+};
 
 export default function Page() {
   return (
