@@ -67,3 +67,39 @@ class MinIOClient:
         except S3Error as e:
             logger.error(f"列出对象失败: {e}")
             return []
+
+    def list_files(self, bucket_name: str, prefix: str = "") -> list:
+        """列出存储桶中的文件，返回详细信息"""
+        try:
+            objects = self.client.list_objects(bucket_name, prefix=prefix)
+            files = []
+            for obj in objects:
+                files.append({
+                    "object_name": obj.object_name,
+                    "size": obj.size,
+                    "last_modified": obj.last_modified.isoformat() if obj.last_modified else ""
+                })
+            return files
+        except S3Error as e:
+            logger.error(f"列出文件失败: {e}")
+            return []
+
+    def download_file(self, bucket_name: str, object_name: str, file_path: str) -> bool:
+        """从MinIO下载文件"""
+        try:
+            self.client.fget_object(bucket_name, object_name, file_path)
+            logger.info(f"文件下载成功: {object_name} -> {file_path}")
+            return True
+        except S3Error as e:
+            logger.error(f"文件下载失败: {e}")
+            return False
+
+    def delete_file(self, bucket_name: str, object_name: str) -> bool:
+        """删除文件"""
+        try:
+            self.client.remove_object(bucket_name, object_name)
+            logger.info(f"文件删除成功: {object_name}")
+            return True
+        except S3Error as e:
+            logger.error(f"文件删除失败: {e}")
+            return False

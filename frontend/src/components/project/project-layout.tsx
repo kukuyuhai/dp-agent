@@ -58,6 +58,7 @@ export function ProjectLayout({
           projectId={project.id}
           selectedFile={selectedFile}
           fileName={files.find(f => f.path === selectedFile)?.name}
+          fileId={files.find(f => f.path === selectedFile)?.id}
         />
       </ResizablePanel>
 

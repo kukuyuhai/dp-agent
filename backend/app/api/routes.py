@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 import os
 import uuid
+import tempfile
 from datetime import datetime
 
 from ..core.database import get_db
@@ -106,10 +107,10 @@ async def get_project_details(
         "versions": [
             {
                 "id": v.id,
-                "version_number": v.version_number,
-                "description": v.description,
+                "version_number": v.id[:8],  # 使用ID前8位作为版本号
+                "description": v.message,
                 "created_at": v.created_at.isoformat(),
-                "parent_version_id": v.parent_version_id
+                "parent_version_id": v.parent_id
             }
             for v in project.versions
         ]
@@ -152,20 +153,174 @@ async def upload_file(
         raise HTTPException(status_code=500, detail="文件上传失败")
     
     # 创建初始版本
-    version_manager = VersionManager()
-    version = await version_manager.create_version(
+    version_manager = VersionManager(db, minio_client)
+    version = version_manager.create_version(
         project_id=project_id,
-        data_file=file_path,
+        message=f"上传文件: {file.filename}",
         code="# 初始数据上传",
-        description=f"上传文件: {file.filename}"
+        data_path=file_path
     )
     
     return {
         "message": "文件上传成功",
         "file_id": file_id,
         "filename": file.filename,
-        "version_id": version["version_id"]
+        "version_id": version.id
     }
+
+# 获取项目文件列表
+@router.get("/projects/{project_id}/files")
+async def get_project_files(
+    project_id: str,
+    db: Session = Depends(get_db),
+    minio_client: MinIOClient = Depends(get_minio_client)
+):
+    """获取项目中的所有文件"""
+    try:
+        # 获取项目的存储桶
+        bucket_name = f"project-{project_id}"
+        
+        # 从MinIO获取文件列表
+        files = minio_client.list_files(bucket_name, prefix="data/")
+        
+        # 格式化为标准响应
+        file_list = []
+        for file_info in files:
+            file_name = file_info["object_name"].split("/")[-1]
+            file_id = file_name.split("_")[0]  # 从文件名提取file_id
+            
+            file_list.append({
+                "id": file_id,
+                "name": "_".join(file_name.split("_")[1:]),  # 移除file_id前缀
+                "path": file_info["object_name"],
+                "size": file_info.get("size", 0),
+                "uploaded_at": file_info.get("last_modified", ""),
+                "file_type": file_name.split(".")[-1].lower()
+            })
+        
+        return file_list
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# 获取文件预览
+@router.get("/projects/{project_id}/files/{file_id}/preview")
+async def preview_file(
+    project_id: str,
+    file_id: str,
+    db: Session = Depends(get_db),
+    minio_client: MinIOClient = Depends(get_minio_client),
+    profiler: DataProfiler = Depends(get_data_profiler)
+):
+    """获取文件预览和数据探查"""
+    try:
+        # 构建文件路径
+        bucket_name = f"project-{project_id}"
+        
+        # 获取文件列表找到对应的文件
+        files = minio_client.list_files(bucket_name, prefix="data/")
+        file_info = None
+        
+        for file in files:
+            if file["object_name"].startswith(f"data/{file_id}_"):
+                file_info = file
+                break
+        
+        if not file_info:
+            raise HTTPException(status_code=404, detail="文件未找到")
+        
+        # 下载文件到临时位置进行探查
+        original_filename = file_info["object_name"].split("/")[-1]  # 获取原始文件名
+        file_extension = os.path.splitext(original_filename)[1]  # 获取文件扩展名
+        file_path = f"/tmp/{file_id}_preview{file_extension}"  # 添加扩展名
+        minio_client.download_file(bucket_name, file_info["object_name"], file_path)
+        
+        # 获取数据探查结果
+        raw_profile = profiler.profile_data(file_path)
+        
+        # 转换数据格式以匹配前端DataProfile接口
+        profile = {
+            'shape': {
+                'rows': raw_profile['basic_info']['total_rows'],
+                'columns': raw_profile['basic_info']['total_columns']
+            },
+            'memory_usage': str(raw_profile['basic_info']['memory_usage']),
+            'columns': {},
+            'quality': {
+                'score': raw_profile['quality_report']['overall_score'],
+                'issues': [issue['description'] for issue in raw_profile['quality_report']['issues']]
+            },
+            'preview': {
+                'headers': raw_profile['basic_info']['column_names'],
+                'rows': raw_profile['sample_data']['head']
+            }
+        }
+        
+        # 转换列信息
+        for col_name, col_data in raw_profile['columns'].items():
+            column_stats = {
+                'type': col_data['dtype'],
+                'non_null_count': col_data['unique_count'] + col_data['null_count'],  # 近似计算
+                'null_count': col_data['null_count'],
+                'unique_count': col_data['unique_count'],
+                'duplicate_rate': 0  # 默认值
+            }
+            
+            # 添加数值统计
+            if col_data.get('is_numeric') and col_data.get('min') is not None:
+                column_stats['numeric_stats'] = {
+                    'min': col_data['min'],
+                    'max': col_data['max'],
+                    'mean': col_data['mean'],
+                    'std': col_data['std']
+                }
+            
+            # 添加分类值统计
+            if col_data.get('top_values'):
+                column_stats['top_values'] = []
+                for item in col_data['top_values']:
+                    if isinstance(item, dict) and 'value' in item and 'count' in item:
+                        column_stats['top_values'].append([item['value'], item['count']])
+            
+            profile['columns'][col_name] = column_stats
+        
+        # 清理临时文件
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        
+        return profile
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# 删除文件
+@router.delete("/projects/{project_id}/files/{file_id}")
+async def delete_project_file(
+    project_id: str,
+    file_id: str,
+    db: Session = Depends(get_db),
+    minio_client: MinIOClient = Depends(get_minio_client)
+):
+    """删除项目中的文件"""
+    try:
+        bucket_name = f"project-{project_id}"
+        
+        # 查找要删除的文件
+        files = minio_client.list_files(bucket_name, prefix="data/")
+        file_to_delete = None
+        
+        for file in files:
+            if file["object_name"].startswith(f"data/{file_id}_"):
+                file_to_delete = file["object_name"]
+                break
+        
+        if not file_to_delete:
+            raise HTTPException(status_code=404, detail="文件未找到")
+        
+        # 删除文件
+        minio_client.delete_file(bucket_name, file_to_delete)
+        
+        return {"message": "文件删除成功"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 # 数据探查端点
 @router.post("/data/profile")
@@ -301,7 +456,7 @@ async def get_versions(
 ):
     """获取项目版本历史"""
     try:
-        versions = await version_manager.get_version_history(project_id)
+        versions = version_manager.get_version_history(project_id)
         return versions
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -322,14 +477,15 @@ async def rollback_version(
     
     return result
 
-@router.get("/versions/{version_id}/diff")
+@router.get("/versions/{version1_id}/{version2_id}/diff")
 async def get_version_diff(
-    version_id: str,
+    version1_id: str,
+    version2_id: str,
     version_manager: VersionManager = Depends(get_version_manager)
 ):
     """获取版本差异"""
     try:
-        diff = await version_manager.compare_versions(version_id)
+        diff = version_manager.compare_versions(version1_id, version2_id)
         return diff
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

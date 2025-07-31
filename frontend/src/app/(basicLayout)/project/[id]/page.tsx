@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Database, MessageCircle } from "lucide-react";
 import { ProjectLayout } from "@/components/project/project-layout";
-import { projectAPI, sessionAPI } from "@/lib/api";
+import { projectAPI, sessionAPI, fileAPI } from "@/lib/api";
 import type { Project, Session, Message } from "@/types";
 
 export default function ProjectPage() {
@@ -17,7 +17,7 @@ export default function ProjectPage() {
   const [project, setProject] = useState<Project | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
-  const [files, setFiles] = useState<Array<{ name: string, path: string }>>([]);
+  const [files, setFiles] = useState<Array<{ name: string, path: string, id: string, size?: number, uploaded_at?: string }>>([]);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [currentSession, setCurrentSession] = useState<Session | null>(null);
@@ -45,24 +45,20 @@ export default function ProjectPage() {
     }
   }, [projectId]);
 
-  // Mock function to simulate file upload
+  // 真实文件上传功能
   const handleFileUpload = async (file: File) => {
     if (!file) return;
 
     setIsUploading(true);
     try {
-      // In a real implementation, this would call an API to upload the file
-      // For now, we'll just add it to the local state
-      const newFile = {
-        name: file.name,
-        path: `uploads/${projectId}/${file.name}`
-      };
-      setFiles(prev => [...prev, newFile]);
-
-      // Auto-select the uploaded file
-      setSelectedFile(newFile.path);
+      const uploadedFile = await fileAPI.uploadFile(projectId, file);
+      setFiles(prev => [...prev, uploadedFile]);
+      
+      // 自动选择上传的文件
+      setSelectedFile(uploadedFile.path);
     } catch (err) {
       console.error("Error uploading file:", err);
+      alert("文件上传失败，请重试");
     } finally {
       setIsUploading(false);
     }
@@ -72,18 +68,23 @@ export default function ProjectPage() {
     setSelectedFile(filePath);
   };
 
+  // 加载项目文件
+  const loadFiles = useCallback(async () => {
+    try {
+      const data = await fileAPI.getFiles(projectId);
+      setFiles(data);
+    } catch (err) {
+      console.error("Error loading files:", err);
+    }
+  }, [projectId]);
+
   useEffect(() => {
     if (projectId) {
       loadProject();
       loadSessions();
-      // Load files for this project (mock implementation)
-      // In a real app, this would fetch from an API
-      setFiles([
-        { name: 'sample_data.xlsx', path: `uploads/${projectId}/sample_data.xlsx` },
-        { name: 'customer_data.xlsx', path: `uploads/${projectId}/customer_data.xlsx` }
-      ]);
+      loadFiles();
     }
-  }, [projectId, loadProject, loadSessions]);
+  }, [projectId, loadProject, loadSessions, loadFiles]);
 
   const handleCreateSession = async () => {
     if (!project) return;

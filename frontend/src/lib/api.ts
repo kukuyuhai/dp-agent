@@ -185,6 +185,10 @@ export interface DataProfile {
     score: number
     issues: string[]
   }
+  preview?: {
+    headers: string[]
+    rows: any[][]
+  }
 }
 
 export interface ColumnStats {
@@ -212,6 +216,44 @@ export const dataAPI = {
     const response = await api.post('/data/preview', { file_path: filePath, limit })
     return response.data
   },
+}
+
+// 文件相关接口
+export interface ProjectFile {
+  id: string
+  name: string
+  path: string
+  size: number
+  uploaded_at: string
+  file_type: string
+}
+
+export const fileAPI = {
+  uploadFile: async (projectId: string, file: File): Promise<ProjectFile> => {
+    const formData = new FormData()
+    formData.append('file', file)
+    
+    const response = await api.post(`/projects/${projectId}/upload`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    })
+    return response.data
+  },
+
+  getFiles: async (projectId: string): Promise<ProjectFile[]> => {
+    const response = await api.get(`/projects/${projectId}/files`)
+    return response.data
+  },
+
+  deleteFile: async (projectId: string, fileId: string): Promise<void> => {
+    await api.delete(`/projects/${projectId}/files/${fileId}`)
+  },
+
+  previewFile: async (projectId: string, fileId: string): Promise<DataProfile> => {
+    const response = await api.get(`/projects/${projectId}/files/${fileId}/preview`)
+    return response.data
+  }
 }
 
 export default api

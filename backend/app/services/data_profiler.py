@@ -2,6 +2,7 @@ import polars as pl
 import numpy as np
 from typing import Dict, Any, List
 import logging
+import os
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -15,15 +16,62 @@ class DataProfiler:
     def profile_data(self, file_path: str) -> Dict[str, Any]:
         """全面探查数据文件"""
         try:
+            # 获取文件扩展名（转换为小写）
+            file_ext = os.path.splitext(file_path)[1].lower()
+            
+            # 调试信息
+            print(f"处理文件: {file_path}")
+            print(f"文件扩展名: {file_ext}")
+            
             # 加载数据
-            if file_path.endswith('.csv'):
-                df = pl.read_csv(file_path)
-            elif file_path.endswith('.xlsx'):
+            if file_ext == '.csv' or file_ext == '.tsv':
+                # 使用chardet检测文件编码并读取CSV文件
+                import chardet
+                
+                # 检测文件编码
+                with open(file_path, 'rb') as f:
+                    raw_data = f.read(10000)  # 读取前10KB用于检测编码
+                    encoding_result = chardet.detect(raw_data)
+                    detected_encoding = encoding_result['encoding'] or 'utf-8'
+                
+                # 设置分隔符
+                separator = '\t' if file_ext == '.tsv' else ','
+                
+                # 使用检测到的编码读取文件
+                try:
+                    # 尝试使用polars的encoding参数
+                    df = pl.read_csv(file_path, separator=separator, encoding=detected_encoding)
+                except TypeError:
+                    # 如果polars版本不支持encoding参数，使用pandas作为后备
+                    import pandas as pd
+                    df = pl.from_pandas(pd.read_csv(file_path, sep=separator, encoding=detected_encoding))
+                except Exception:
+                    # 如果检测失败，尝试常见编码
+                    for encoding in ['utf-8', 'gbk', 'gb18030', 'latin-1']:
+                        try:
+                            try:
+                                df = pl.read_csv(file_path, separator=separator, encoding=encoding)
+                            except TypeError:
+                                import pandas as pd
+                                df = pl.from_pandas(pd.read_csv(file_path, sep=separator, encoding=encoding))
+                            break
+                        except Exception:
+                            continue
+                    else:
+                        # 最后尝试使用替换模式读取
+                        try:
+                            df = pl.read_csv(file_path, separator=separator, encoding='utf-8', encoding_errors='replace')
+                        except TypeError:
+                            import pandas as pd
+                            df = pl.from_pandas(pd.read_csv(file_path, sep=separator, encoding='utf-8', encoding_errors='replace'))
+            elif file_ext in ['.xlsx', '.xls']:
                 df = pl.read_excel(file_path)
-            elif file_path.endswith('.parquet'):
+            elif file_ext == '.parquet':
                 df = pl.read_parquet(file_path)
             else:
-                raise ValueError("不支持的文件格式")
+                raise ValueError(f"不支持的文件格式: {file_ext}")
+                
+            print(f"成功加载数据，形状: {df.shape}")
             
             return {
                 'basic_info': self._get_basic_info(df),

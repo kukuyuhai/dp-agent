@@ -1,8 +1,12 @@
 // 通用类型定义
 
 export interface FileItem {
+  id: string;
   name: string;
   path: string;
+  size?: number;
+  uploaded_at?: string;
+  file_type?: string;
 }
 
 // 项目相关类型
